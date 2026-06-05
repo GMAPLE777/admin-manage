@@ -181,7 +181,7 @@ admin-manage/
 
 ## 开发原则
 
-1. 严格按照目录结构生成代码
+1. 严格按照目录结构编写代码
 2. 使用 Vue3 Composition API
 3. 使用 `<script setup>` 语法
 4. 所有接口统一封装至 api 目录
