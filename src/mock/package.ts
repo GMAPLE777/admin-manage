@@ -10,8 +10,10 @@ const packages = Array.from({ length: 12 }, (_, i) => ({
   status: i % 4 === 0 ? 0 : 1,
 }))
 
+let nextId = packages.length + 1
+
 export const packageMock: MockMethod[] = [
-  // 套餐列表（分页 + 搜索 + 分类筛选）
+  // 套餐列表
   {
     url: '/api/package/list',
     method: 'get',
@@ -22,23 +24,14 @@ export const packageMock: MockMethod[] = [
       const category = query.category || ''
 
       let filtered = packages
-      if (keyword) {
-        filtered = filtered.filter((p) => p.packageName.includes(keyword))
-      }
-      if (category) {
-        filtered = filtered.filter((p) => p.packageName.includes(category))
-      }
+      if (keyword) filtered = filtered.filter((p) => p.packageName.includes(keyword))
+      if (category) filtered = filtered.filter((p) => p.packageName.includes(category))
 
       const start = (page - 1) * pageSize
       return {
         code: 200,
         message: 'success',
-        data: {
-          list: filtered.slice(start, start + pageSize),
-          total: filtered.length,
-          page,
-          pageSize,
-        },
+        data: { list: filtered.slice(start, start + pageSize), total: filtered.length, page, pageSize },
       }
     },
   },
@@ -46,30 +39,31 @@ export const packageMock: MockMethod[] = [
   {
     url: '/api/package/add',
     method: 'post',
-    response: ({ body }: { body: Record<string, unknown> }) => ({
-      code: 200,
-      message: '新增成功',
-      data: { id: packages.length + 1, ...body },
-    }),
+    response: ({ body }: { body: Record<string, unknown> }) => {
+      const newPkg = { id: nextId++, ...(body as Record<string, unknown>) }
+      packages.unshift(newPkg as unknown as typeof packages[number])
+      return { code: 200, message: '新增成功', data: newPkg }
+    },
   },
   // 更新套餐
   {
     url: '/api/package/update',
     method: 'put',
-    response: ({ body }: { body: Record<string, unknown> }) => ({
-      code: 200,
-      message: '更新成功',
-      data: body,
-    }),
+    response: ({ body }: { body: Record<string, unknown> }) => {
+      const idx = packages.findIndex((p) => p.id === (body.id as number))
+      if (idx > -1) Object.assign(packages[idx], body)
+      return { code: 200, message: '更新成功', data: packages[idx] }
+    },
   },
   // 删除套餐
   {
     url: '/api/package/delete',
     method: 'delete',
-    response: () => ({
-      code: 200,
-      message: '删除成功',
-      data: null,
-    }),
+    response: ({ query }: { query: { id: string } }) => {
+      const id = Number(query.id)
+      const idx = packages.findIndex((p) => p.id === id)
+      if (idx > -1) packages.splice(idx, 1)
+      return { code: 200, message: '删除成功', data: null }
+    },
   },
 ]
