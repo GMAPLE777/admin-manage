@@ -1,7 +1,7 @@
 import axios, { type AxiosInstance, type AxiosRequestConfig, type AxiosResponse } from 'axios'
 import { ElMessage } from 'element-plus'
 import router from '@/router'
-import { getToken, removeToken } from './auth'
+import { getToken, removeToken } from '@/utils/auth'
 
 /** Axios 实例 — 统一基础配置 */
 const service: AxiosInstance = axios.create({

@@ -118,7 +118,17 @@ async function fetchData() {
     const result = await getPackageList({ ...pageInfo, keyword: keyword.value, category: category.value })
     tableData.value = result.list
     total.value = result.total
-  } catch { /* mock 未启用 */ } finally { loading.value = false }
+    // 删除等操作后若当前页已为空且不是第一页，则回退一页
+    if (tableData.value.length === 0 && pageInfo.page > 1) {
+      pageInfo.page--
+      await fetchData()
+    }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : '数据加载失败'
+    ElMessage.error(msg)
+  } finally {
+    loading.value = false
+  }
 }
 
 function handleSearch(kw: string) {
@@ -160,13 +170,14 @@ function handleEdit(row: PackageInfo) {
 }
 
 async function handleSubmit() {
-  const valid = await formRef.value?.validate().catch(() => false)
+  if (!formRef.value) return
+  const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
 
   submitLoading.value = true
   try {
-    if (isEdit.value) {
-      await updatePackage({ id: editId.value!, ...form })
+    if (isEdit.value && editId.value !== null) {
+      await updatePackage({ id: editId.value, ...form })
       ElMessage.success('编辑成功')
     } else {
       await addPackage(form)
@@ -174,16 +185,28 @@ async function handleSubmit() {
     }
     dialogVisible.value = false
     fetchData()
-  } catch { /* mock 未启用 */ } finally { submitLoading.value = false }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : '操作失败'
+    ElMessage.error(msg)
+  } finally {
+    submitLoading.value = false
+  }
 }
 
 async function handleDelete(row: PackageInfo) {
   try {
     await ElMessageBox.confirm(`确认删除套餐「${row.packageName}」？`, '提示', { type: 'warning' })
+  } catch {
+    return
+  }
+  try {
     await deletePackage(row.id)
     ElMessage.success('删除成功')
     fetchData()
-  } catch { /* 取消 */ }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : '删除失败'
+    ElMessage.error(msg)
+  }
 }
 
 function resetForm() {

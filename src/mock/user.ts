@@ -1,7 +1,16 @@
 import type { MockMethod } from 'vite-plugin-mock'
 
 /** 用户数据 — 字段对齐 project.md：id, username, phone, packageName, createTime, status */
-const users = Array.from({ length: 36 }, (_, i) => ({
+interface UserRecord {
+  id: number
+  username: string
+  phone: string
+  packageName: string
+  createTime: string
+  status: number
+}
+
+const users: UserRecord[] = Array.from({ length: 36 }, (_, i) => ({
   id: i + 1,
   username: `用户${String(i + 1).padStart(3, '0')}`,
   phone: `138${String(i + 1).padStart(8, '0')}`,
@@ -12,6 +21,18 @@ const users = Array.from({ length: 36 }, (_, i) => ({
 
 /** 自增 ID */
 let nextId = users.length + 1
+
+/** 从前端 body 中提取合法字段，构建干净的用户对象 */
+function buildUser(body: Record<string, unknown>): UserRecord {
+  return {
+    id: nextId++,
+    username: (body.username as string) || '',
+    phone: (body.phone as string) || '',
+    packageName: (body.packageName as string) || '',
+    status: (body.status as number) ?? 1,
+    createTime: new Date().toISOString().split('T')[0],
+  }
+}
 
 export const userMock: MockMethod[] = [
   // 用户列表（分页 + 搜索）
@@ -45,15 +66,8 @@ export const userMock: MockMethod[] = [
     url: '/api/user/add',
     method: 'post',
     response: ({ body }: { body: Record<string, unknown> }) => {
-      const newUser = {
-        id: nextId++,
-        username: (body.username as string) || '',
-        phone: (body.phone as string) || '',
-        packageName: (body.packageName as string) || '',
-        status: (body.status as number) ?? 1,
-        createTime: '2026-06-05',
-      }
-      users.unshift(newUser) // 真正添加进数组
+      const newUser = buildUser(body)
+      users.unshift(newUser)
       return { code: 200, message: '新增成功', data: newUser }
     },
   },
@@ -62,9 +76,18 @@ export const userMock: MockMethod[] = [
     url: '/api/user/update',
     method: 'put',
     response: ({ body }: { body: Record<string, unknown> }) => {
-      const idx = users.findIndex((u) => u.id === (body.id as number))
-      if (idx > -1) {
-        users[idx] = { ...users[idx], ...(body as Record<string, unknown>) }
+      const id = (body.id as number) ?? 0
+      const idx = users.findIndex((u) => u.id === id)
+      if (idx === -1) {
+        return { code: 400, message: '用户不存在', data: null }
+      }
+      // spread 创建新对象，不可变风格
+      users[idx] = {
+        ...users[idx],
+        username: (body.username as string) ?? users[idx].username,
+        phone: (body.phone as string) ?? users[idx].phone,
+        packageName: (body.packageName as string) ?? users[idx].packageName,
+        status: (body.status as number) ?? users[idx].status,
       }
       return { code: 200, message: '更新成功', data: users[idx] }
     },
@@ -76,9 +99,10 @@ export const userMock: MockMethod[] = [
     response: ({ query }: { query: { id: string } }) => {
       const id = Number(query.id)
       const idx = users.findIndex((u) => u.id === id)
-      if (idx > -1) {
-        users.splice(idx, 1) // ← 真正从数组里删掉！
+      if (idx === -1) {
+        return { code: 400, message: '用户不存在', data: null }
       }
+      users.splice(idx, 1)
       return { code: 200, message: '删除成功', data: null }
     },
   },

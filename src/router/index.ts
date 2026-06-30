@@ -45,6 +45,11 @@ const protectedRoutes: RouteRecordRaw[] = [
       },
     ],
   },
+  // 404 兜底 — 未匹配路由重定向到首页
+  {
+    path: '/:pathMatch(.*)*',
+    redirect: '/dashboard',
+  },
 ]
 
 const router = createRouter({
